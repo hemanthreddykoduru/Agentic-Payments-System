@@ -108,7 +108,51 @@ async function main() {
   await prisma.order.delete({ where: { id: orderId } });
   assert.equal(await ledgerSum(), 0);
 
-  console.log("e2e ok — order → QR → UTR → confirm → balanced ledger");
+  // 8. the public API: auth, tenancy and the paise contract
+  const bcrypt = (await import("bcryptjs")).default;
+  const secret = "e2e-secret-" + Date.now();
+  const keyId = "ap_test_e2e" + Date.now().toString(36);
+  const key = await prisma.apiKey.create({
+    data: {
+      id: "key_e2e" + Date.now().toString(36), merchantId: merchant.id, mode: "test",
+      keyId, secretHash: await bcrypt.hash(secret, 10), secretLast4: secret.slice(-4),
+    },
+  });
+  const basic = "Basic " + Buffer.from(`${keyId}:${secret}`).toString("base64");
+
+  assert.equal((await fetch(`${BASE}/v1/orders`)).status, 401, "unauthenticated /v1 was not 401");
+  assert.equal(
+    (await fetch(`${BASE}/v1/orders`, { headers: { authorization: "Basic " + Buffer.from(keyId + ":wrong").toString("base64") } })).status,
+    401, "a wrong secret was accepted",
+  );
+
+  const created = await fetch(`${BASE}/v1/orders`, {
+    method: "POST",
+    headers: { authorization: basic, "content-type": "application/json" },
+    body: JSON.stringify({ amount: 95000, description: "e2e api order" }),
+  });
+  assert.equal(created.status, 201);
+  const apiOrder = await created.json();
+  assert.equal(apiOrder.amount, 95000, "amount is paise and must round-trip exactly");
+  assert.ok(apiOrder.upi_intent.includes(encodeURIComponent(merchant.vpa)), "API order does not pay the merchant");
+  assert.equal(apiOrder.pay_url, `/pay/${apiOrder.id}`);
+  assert.equal(apiOrder.merchantId, undefined, "serializer leaked merchantId");
+
+  // rupees instead of paise must be refused, not silently rounded
+  assert.equal(
+    (await fetch(`${BASE}/v1/orders`, {
+      method: "POST", headers: { authorization: basic, "content-type": "application/json" },
+      body: JSON.stringify({ amount: 950.5, description: "fractional" }),
+    })).status, 400, "a fractional amount was accepted",
+  );
+
+  const list = await (await fetch(`${BASE}/v1/orders?count=5`, { headers: { authorization: basic } })).json();
+  assert.ok(list.items.length <= 5 && list.total >= 1);
+
+  await prisma.order.delete({ where: { id: apiOrder.id } });
+  await prisma.apiKey.delete({ where: { id: key.id } });
+
+  console.log("e2e ok — order → QR → UTR → confirm → balanced ledger; /v1 auth + paise contract");
 }
 
 main()

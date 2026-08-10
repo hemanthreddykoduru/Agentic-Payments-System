@@ -30,7 +30,7 @@ export const NAV: { group?: string; items: NavItem[] }[] = [
   {
     group: "Developers",
     items: [
-      { label: "API keys", soon: true },
+      { label: "API keys", href: "/app/keys" },
       { label: "Webhooks", soon: true },
       { label: "MCP server", soon: true },
     ],

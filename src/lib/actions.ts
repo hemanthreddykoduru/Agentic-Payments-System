@@ -380,3 +380,42 @@ export async function closeQr(form: FormData) {
   });
   revalidatePath("/app/qr");
 }
+
+/* ── API keys ──────────────────────────────────────────────────────────── */
+
+export async function createApiKey(_prev: unknown, form: FormData) {
+  const session = await requireSession();
+  if (session.role !== "owner") return { error: "Only the owner can create API keys." };
+
+  const mode = String(form.get("mode") ?? "test") === "live" ? "live" : "test";
+
+  const keyId = `ap_${mode}_${randomBytes(9).toString("base64url")}`;
+  const secret = randomBytes(24).toString("base64url");
+
+  await prisma.apiKey.create({
+    data: {
+      id: newId("apiKey"),
+      merchantId: session.merchantId,
+      mode,
+      keyId,
+      // Only the hash is stored. There is no route that can ever show the secret
+      // again — losing it means rotating the key, which is the point.
+      secretHash: await bcrypt.hash(secret, 10),
+      secretLast4: secret.slice(-4),
+    },
+  });
+
+  revalidatePath("/app/keys");
+  return { ok: true as const, keyId, secret };
+}
+
+export async function revokeApiKey(form: FormData) {
+  const session = await requireSession();
+  if (session.role !== "owner") return;
+
+  await prisma.apiKey.updateMany({
+    where: { id: String(form.get("keyId") ?? ""), merchantId: session.merchantId },
+    data: { active: false },
+  });
+  revalidatePath("/app/keys");
+}
