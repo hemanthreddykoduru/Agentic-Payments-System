@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPI Test Checkout</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font: 16px/1.5 system-ui, sans-serif;
+    max-width: 26rem; margin: 3rem auto; padding: 0 1rem;
+  }
+  h1 { font-size: 1.25rem; }
+  input, button { font: inherit; padding: .6rem .8rem; border-radius: .4rem; }
+  input { width: 100%; box-sizing: border-box; border: 1px solid gray; }
+  button { cursor: pointer; border: 0; background: #1a5; color: #fff; width: 100%; margin-top: .75rem; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.dev { background: #666; }
+  .presets { display: flex; gap: .5rem; margin: .5rem 0 1rem; }
+  .presets button { margin: 0; background: transparent; color: inherit; border: 1px solid gray; }
+  .presets button[aria-pressed="true"] { background: #1a5; color: #fff; border-color: #1a5; }
+  .timer { font-variant-numeric: tabular-nums; }
+  #qr.expired { opacity: .15; }
+
+  /* Success. CSS animation only — a library for one checkmark is not worth the bytes. */
+  #success { text-align: center; animation: rise .35s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(.75rem); } }
+  #tick { width: 4.5rem; height: 4.5rem; display: block; margin: .5rem auto 1rem; }
+  #tick circle, #tick path {
+    fill: none; stroke: #1a5; stroke-width: 3;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  #tick circle { stroke-dasharray: 152; animation: draw .5s ease-out forwards; }
+  #tick path { stroke-dasharray: 40; animation: draw .3s .45s ease-out forwards; stroke-dashoffset: 40; }
+  @keyframes draw { from { stroke-dashoffset: 152; } to { stroke-dashoffset: 0; } }
+  .big { font-size: 2rem; font-weight: 700; margin: .25rem 0 1.25rem; }
+  .receipt {
+    display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem;
+    text-align: left; border-top: 1px dashed gray; padding-top: 1rem; margin: 0 0 .5rem;
+  }
+  .receipt dt { opacity: .7; }
+  .receipt dd { margin: 0; text-align: right; }
+  @media (prefers-reduced-motion: reduce) {
+    #success, #tick circle, #tick path { animation: none; stroke-dashoffset: 0; }
+  }
+  @media print {
+    button, #form, #pending { display: none !important; }
+  }
+  img { width: 100%; max-width: 16rem; display: block; margin: 1rem auto; image-rendering: pixelated; }
+  .box { border: 1px solid gray; border-radius: .5rem; padding: 1rem; margin-top: 1.5rem; }
+  code { word-break: break-all; font-size: .8rem; }
+  .status { font-weight: 600; }
+  .paid { color: #1a5; }
+  .err { color: #c33; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<h1>UPI Test Checkout</h1>
+
+<section id="form">
+  <div class="presets" id="presets">
+    <button type="button" data-amt="49">₹49</button>
+    <button type="button" data-amt="149">₹149</button>
+    <button type="button" data-amt="499">₹499</button>
+  </div>
+  <label for="amount">Or enter any amount (INR)</label>
+  <input id="amount" type="number" min="0.01" max="100000" step="0.01" value="149.01" required>
+  <button id="pay">Pay</button>
+  <p id="error" class="err" hidden></p>
+</section>
+
+<section id="pending" class="box" hidden>
+  <p>Scan with any UPI app</p>
+  <img id="qr" alt="UPI payment QR code">
+  <p>Order <code id="orderId"></code></p>
+  <p>Status: <span id="status" class="status">PENDING</span> · <span id="timer" class="timer"></span></p>
+  <p><a id="upiLink" href="#">Open in a UPI app</a> (mobile only)</p>
+  <button id="simulate" class="dev" hidden>Simulate Payment (dev)</button>
+  <button id="regen" hidden>Generate a new QR</button>
+</section>
+
+<section id="success" class="box" hidden>
+  <svg id="tick" viewBox="0 0 52 52" aria-hidden="true">
+    <circle cx="26" cy="26" r="24"/>
+    <path d="M14 27l8 8 16-16"/>
+  </svg>
+  <h2 class="paid">Payment successful</h2>
+  <p class="big">₹<span id="paidAmount"></span></p>
+
+  <dl class="receipt">
+    <dt>Order</dt><dd><code id="paidId"></code></dd>
+    <dt>Paid at</dt><dd id="paidAt"></dd>
+    <dt>Method</dt><dd>UPI</dd>
+    <dt>To</dt><dd>Hemanth Reddy</dd>
+  </dl>
+
+  <button id="print" class="dev">Print receipt</button>
+  <button id="again">New payment</button>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+let poll = null, tick = null, devMode = false;
+
+// The Simulate button only exists when the server says it is in dev mode.
+fetch("/dev-mode").then(r => r.json()).then(d => { devMode = d.dev; });
+
+// Presets just fill the same input the custom entry uses — one amount source, no second path.
+$("presets").onclick = e => {
+  const btn = e.target.closest("button[data-amt]");
+  if (!btn) return;
+  $("amount").value = btn.dataset.amt;
+  syncPresets();
+};
+$("amount").oninput = syncPresets;
+function syncPresets() {
+  for (const b of $("presets").children) {
+    b.setAttribute("aria-pressed", String(b.dataset.amt === $("amount").value));
+  }
+}
+syncPresets();
+
+async function createOrder() {
+  $("error").hidden = true;
+  $("pay").disabled = $("regen").disabled = true;
+  try {
+    const res = await fetch("/create-order", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ amount: $("amount").value }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not create order");
+    showOrder(data);
+  } catch (e) {
+    $("error").textContent = e.message;
+    $("error").hidden = false;
+    $("form").hidden = false;
+    $("pending").hidden = true;
+  } finally {
+    $("pay").disabled = $("regen").disabled = false;
+  }
+}
+
+// Regenerating means a brand new order at the same amount — the expired one stays
+// expired rather than being revived, so a late scan of the old QR can't slip through.
+$("pay").onclick = createOrder;
+$("regen").onclick = createOrder;
+
+function showOrder(order) {
+  clearInterval(poll);
+  clearInterval(tick);
+
+  $("qr").src = order.qr_data_url;
+  $("qr").classList.remove("expired");
+  $("orderId").textContent = order.order_id;
+  $("upiLink").href = order.upi_link;
+  $("status").textContent = "PENDING";
+  $("regen").hidden = true;
+  $("simulate").hidden = !devMode;
+  $("form").hidden = true;
+  $("pending").hidden = false;
+
+  // Countdown is cosmetic; the server expires the order independently, so a stopped
+  // clock (backgrounded tab, fiddled system time) can't make a dead QR payable.
+  const deadline = Date.now() + order.expires_in * 1000;
+  tick = setInterval(() => {
+    const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+    $("timer").textContent = left ? `expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "";
+    // At zero, ask the server rather than assuming — a payment that landed in the
+    // last second must not get shown as expired by a clock the server never saw.
+    if (left === 0) { clearInterval(tick); refresh(); }
+  }, 250);
+
+  // ponytail: 3s polling, no backoff. Fine for one tab on localhost; use SSE if you ever
+  // point this at a real server with real traffic.
+  poll = setInterval(refresh, 3000);
+
+  async function refresh() {
+    const res = await fetch(`/order-status/${order.order_id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.status === "PAID") succeed(data);
+    else if (data.status === "EXPIRED" || data.status === "FAILED") expire(data.status);
+  }
+
+  function succeed(data) {
+    clearInterval(poll);
+    clearInterval(tick);
+    $("paidId").textContent = data.order_id;
+    $("paidAmount").textContent = data.amount;
+    $("paidAt").textContent = new Date(data.paid_at).toLocaleString("en-IN");
+    $("pending").hidden = true;
+    $("success").hidden = false;
+    document.title = "Paid ₹" + data.amount;
+  }
+
+  function expire(status) {
+    clearInterval(poll);
+    clearInterval(tick);
+    $("timer").textContent = "";
+    $("status").textContent = status;
+    $("qr").classList.add("expired");
+    $("simulate").hidden = true; // the server would reject it now anyway
+    $("regen").hidden = false;
+  }
+
+  $("simulate").onclick = () =>
+    fetch("/admin/simulate-payment", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ order_id: order.order_id }),
+    });
+    // Deliberately ignores the response: the poll above is what flips the UI,
+    // so success can only ever come from the server saying so.
+}
+
+$("print").onclick = () => window.print();
+$("again").onclick = () => location.reload();
+</script>
+</body>
+</html>

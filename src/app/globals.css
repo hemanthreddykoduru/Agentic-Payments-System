@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   The page is the statement.
+
+   A payments product's one distinctive act is posting: money arrives and the
+   ledger writes balanced legs for it. So the page is laid out as a statement
+   under audit — a rule runs down the left margin as you scroll, sections are
+   numbered like line items, and the hero document posts itself.
+   Every structural device means something about bookkeeping.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  --color-paper: #fbf9f6;
+  --color-card: #ffffff;
+  --color-ink: #171412;
+  --color-muted: #6d665e;
+  --color-line: #e5dfd7;
+
+  --color-accent: #f26522;
+  --color-accent-deep: #c64f0e;
+  --color-accent-soft: #fdeee5;
+
+  --color-ok: #3e9b62;
+  --color-no: #c64530;
+  --color-no-soft: #fbeae6;
+
+  --color-dark: #171412;
+  --color-dark-2: #211d19;
+  --color-dark-line: #332d27;
+  --color-dark-mut: #a69c91;
+
+  --font-sans: var(--font-inter);
+  --font-tight: var(--font-inter-tight);
+  --font-ui: var(--font-plex-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .tight {
+  font-family: var(--font-tight);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+/* Mono carries every label, ID and amount — the register of a printed ledger. */
+@utility ui {
+  font-family: var(--font-ui);
+}
+
+@utility eyebrow {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-deep);
+}
+
+@utility sheet {
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: 28px;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dashed flow lines in the SVG figures. */
+.flowline {
+  stroke-dasharray: 4 7;
+  animation: dash 1.1s linear infinite;
+}
+@keyframes dash {
+  to { stroke-dashoffset: -11; }
+}
+
+/* A ledger leg stamps in rather than fading — it is posted, not revealed. */
+@keyframes stamp {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.stamp { animation: stamp 0.3s cubic-bezier(0.2, 0.8, 0.3, 1) backwards; }

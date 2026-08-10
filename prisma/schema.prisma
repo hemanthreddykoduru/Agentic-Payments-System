@@ -1,0 +1,412 @@
+// Agentic Payment — schema for AGENTIC_PAYMENT_MASTER.md §5.
+//
+// Three rules hold everywhere:
+//   1. Money is an Int in paise. Never Float — 0.1 + 0.2 must not happen to a ledger.
+//   2. Every tenant-owned row carries merchantId and indexes it.
+//   3. We never hold money. Payments land in the merchant's own VPA, so there is no
+//      Settlement, Balance, Refund or Dispute here — and there never will be.
+//
+// CockroachDB supports enums, but statuses stay String so the schema ports cleanly and
+// a new state does not need a migration. Allowed values are listed above each column
+// and enforced in code via src/lib/enums.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "cockroachdb"
+}
+
+model Merchant {
+  id        String   @id
+  name      String
+  email     String   @unique
+  /// The merchant's OWN UPI ID, e.g. 9966659900@ybl. Every QR we generate pays this.
+  vpa       String?
+  /// Name shown in the payer's UPI app. Their bank decides the real one; this is the hint.
+  payeeName String?
+  /// Set when the merchant confirms a ₹1 test payment reached them.
+  vpaVerifiedAt DateTime?
+  gstin     String?
+  website   String?
+  createdAt DateTime @default(now())
+
+  users         User[]
+  apiKeys       ApiKey[]
+  webhooks      Webhook[]
+  webhookEvents WebhookEvent[]
+  customers     Customer[]
+  orders        Order[]
+  payments      Payment[]
+  ledgerEntries LedgerEntry[]
+  paymentLinks  PaymentLink[]
+  qrCodes       QRCode[]
+  invoices      Invoice[]
+  plans         Plan[]
+  subscriptions Subscription[]
+  reports       Report[]
+  agents        Agent[]
+  agentActions  AgentAction[]
+}
+
+model User {
+  id           String   @id
+  merchantId   String
+  email        String   @unique
+  name         String
+  passwordHash String
+  /// owner | staff | view_only — a shop has an owner and maybe a counter person.
+  role         String   @default("owner")
+  createdAt    DateTime @default(now())
+
+  merchant           Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  confirmedPayments  Payment[] @relation("ConfirmedBy")
+
+  @@index([merchantId])
+}
+
+model ApiKey {
+  id          String    @id
+  merchantId  String
+  /// test | live
+  mode        String
+  keyId       String    @unique
+  secretHash  String
+  /// The plaintext secret is shown once at creation and never stored.
+  secretLast4 String
+  active      Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+model Webhook {
+  id         String   @id
+  merchantId String
+  url        String
+  secret     String
+  /// JSON array of subscribed event names: order.paid | order.rejected | order.expired
+  events     String
+  active     Boolean  @default(true)
+  alertEmail String?
+  createdAt  DateTime @default(now())
+
+  merchant   Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  deliveries WebhookEvent[]
+
+  @@index([merchantId])
+}
+
+model WebhookEvent {
+  id           String    @id
+  merchantId   String
+  webhookId    String
+  event        String
+  payload      String
+  /// pending | delivered | failed
+  status       String    @default("pending")
+  attempts     Int       @default(0)
+  responseCode Int?
+  responseMs   Int?
+  nextRetryAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  webhook  Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([webhookId])
+}
+
+model Customer {
+  id         String   @id
+  merchantId String
+  name       String
+  email      String?
+  contact    String?
+  gstin      String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  orders        Order[]
+  payments      Payment[]
+  invoices      Invoice[]
+  subscriptions Subscription[]
+
+  @@index([merchantId])
+  @@index([merchantId, email])
+}
+
+/// What is owed. One order can carry several payment attempts — a payer who fat-fingers
+/// the amount pays twice, and both attempts must stay visible to the merchant.
+model Order {
+  id          String   @id
+  merchantId  String
+  customerId  String?
+  /// paise
+  amount      Int
+  currency    String   @default("INR")
+  /// created | awaiting_confirmation | paid | expired | cancelled
+  status      String   @default("created")
+  description String?
+  receipt     String?
+  notes       String?
+  /// The upi:// intent this order's QR encodes. Stored so the QR is never rebuilt
+  /// from a different VPA than the payer originally saw.
+  upiIntent   String
+  expiresAt   DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  payments Payment[]
+
+  @@index([merchantId])
+  @@index([merchantId, status])
+  @@index([merchantId, createdAt])
+}
+
+/// One attempt against an order. There is no `authorized` or `captured` here — those
+/// are custody states, and we never take custody. A human moves this to paid.
+model Payment {
+  id                String    @id
+  merchantId        String
+  orderId           String
+  customerId        String?
+  /// paise — what the payer says they sent, which may differ from the order amount
+  amount            Int
+  /// created | awaiting_confirmation | paid | rejected | expired
+  status            String    @default("created")
+  /// Always "upi". Column exists so reports do not need rewriting if that changes.
+  method            String    @default("upi")
+  /// The payer's VPA, if they tell us. Never required.
+  payerVpa          String?
+  /// The 12-digit UTR from the payer's UPI app. Our only matchable reference.
+  utr               String?
+  utrSubmittedAt    DateTime?
+  /// Who confirmed it, and when. The merchant is the authority on whether money arrived.
+  confirmedByUserId String?
+  confirmedAt       DateTime?
+  rejectedReason    String?
+  createdAt         DateTime  @default(now())
+
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  confirmedBy User?     @relation("ConfirmedBy", fields: [confirmedByUserId], references: [id])
+
+  @@unique([merchantId, utr])
+  @@index([merchantId])
+  @@index([merchantId, status])
+  @@index([merchantId, createdAt])
+  @@index([orderId])
+}
+
+/// The merchant's books. A confirmed receipt writes Dr bank_upi / Cr sales, and the
+/// two legs sum to zero. No fee or tax legs — we take no cut of money we never touch.
+model LedgerEntry {
+  id          String   @id
+  merchantId  String
+  /// bank_upi (what reached their bank) | sales (what they earned)
+  account     String
+  /// signed paise: debits positive, credits negative. Every transaction sums to zero.
+  amount      Int
+  /// payment | adjustment
+  sourceType  String
+  sourceId    String
+  description String
+  createdAt   DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([sourceType, sourceId])
+}
+
+model PaymentLink {
+  id            String    @id
+  merchantId    String
+  slug          String    @unique
+  /// paise; null means the payer chooses the amount
+  amount        Int?
+  description   String
+  /// active | paid | expired | cancelled
+  status        String    @default("active")
+  reusable      Boolean   @default(false)
+  customerEmail String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+model QRCode {
+  id          String   @id
+  merchantId  String
+  name        String
+  /// paise; null for a QR that accepts any amount (a counter QR)
+  fixedAmount Int?
+  /// The upi:// payload this QR encodes
+  payload     String
+  /// active | closed
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+model Invoice {
+  id            String    @id
+  merchantId    String
+  customerId    String
+  number        String
+  /// draft | issued | partially_paid | paid | overdue | cancelled
+  status        String    @default("draft")
+  /// paise
+  subtotal      Int       @default(0)
+  taxAmount     Int       @default(0)
+  total         Int       @default(0)
+  amountPaid    Int       @default(0)
+  /// Two-letter state code; decides IGST vs CGST+SGST
+  placeOfSupply String    @default("TS")
+  notes         String?
+  terms         String?
+  dueAt         DateTime?
+  issuedAt      DateTime?
+  createdAt     DateTime  @default(now())
+
+  merchant Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customer Customer      @relation(fields: [customerId], references: [id])
+  items    InvoiceItem[]
+
+  @@unique([merchantId, number])
+  @@index([merchantId])
+  @@index([merchantId, status])
+}
+
+model InvoiceItem {
+  id           String  @id
+  invoiceId    String
+  name         String
+  description  String?
+  quantity     Int     @default(1)
+  /// paise, per unit
+  unitAmount   Int
+  /// GST percent times 100, so 18% is 1800 — keeps rates exact in Int arithmetic
+  taxRate      Int     @default(0)
+  hsnCode      String?
+  sacCode      String?
+  taxInclusive Boolean @default(false)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Plan {
+  id            String   @id
+  merchantId    String
+  name          String
+  /// paise, per interval
+  amount        Int
+  /// daily | weekly | monthly | yearly
+  period        String   @default("monthly")
+  intervalCount Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([merchantId])
+}
+
+/// A recurring reminder, not a mandate. We cannot debit anyone — each cycle raises a
+/// fresh order the customer pays like any other.
+model Subscription {
+  id           String    @id
+  merchantId   String
+  planId       String
+  customerId   String
+  /// active | paused | cancelled | completed
+  status       String    @default("active")
+  chargeCount  Int       @default(0)
+  totalCount   Int       @default(12)
+  currentStart DateTime?
+  currentEnd   DateTime?
+  createdAt    DateTime  @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  plan     Plan     @relation(fields: [planId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([merchantId])
+  @@index([merchantId, status])
+}
+
+model Report {
+  id         String   @id
+  merchantId String
+  name       String
+  /// payments | orders | customers | ledger
+  type       String
+  columns    String
+  /// processing | ready | failed
+  status     String   @default("processing")
+  format     String   @default("csv")
+  rangeStart DateTime
+  rangeEnd   DateTime
+  fileUrl    String?
+  createdAt  DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+model Agent {
+  id          String   @id
+  merchantId  String
+  name        String
+  /// collections | bookkeeping | support
+  kind        String
+  /// active | paused
+  status      String   @default("active")
+  /// JSON array of permitted scopes
+  scopes      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  merchant Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  actions  AgentAction[]
+
+  @@index([merchantId])
+}
+
+/// Append-only. "The agent did it" is only acceptable if you can show exactly what it did.
+model AgentAction {
+  id         String   @id
+  merchantId String
+  agentId    String
+  action     String
+  detail     String
+  /// success | failed | needs_approval
+  outcome    String   @default("success")
+  createdAt  DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  agent    Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([agentId])
+}
