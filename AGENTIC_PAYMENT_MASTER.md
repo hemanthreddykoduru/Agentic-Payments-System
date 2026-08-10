@@ -108,8 +108,17 @@ Change:
 A confirmed receipt writes `Dr bank_upi` / `Cr sales`, summing to zero. That is what makes
 "what did I earn in March" a query instead of a guess.
 
-**NFRs (unchanged):** every row carries `merchantId`; amounts are integer paise; POSTs honour
-`Idempotency-Key`; agent actions are audited; every list has skeleton / empty / error / pagination.
+**NFRs:** every row carries `merchantId`; POSTs honour `Idempotency-Key`; agent actions are
+audited; every list has skeleton / empty / error / pagination.
+
+**Money:** integer minor units, always. INR and USD have exponent 2, JPY 0, KWD 3 — store the
+exponent with the currency rather than assuming 100. v1 is INR only; the map exists so adding a
+currency is not a migration.
+
+**Webhook delivery contract:** HMAC-SHA256 over the raw body in `X-AgenticPay-Signature`. The
+merchant's endpoint must answer 2XX within 5 seconds. Failures retry with exponential backoff for
+24 hours, then the endpoint is auto-disabled and the alert email fires. Every attempt including the
+response body is kept and replayable.
 
 ---
 
@@ -178,7 +187,42 @@ design system and the live-database honesty (blank over invented).
 
 ---
 
-## 9. OUT OF SCOPE — PERMANENTLY
+## 9. TEST MODE
+
+There is no sandbox PSP, because there is no PSP. A merchant tests by paying **₹1 to their own
+VPA** from their own phone and confirming it — the real loop, one rupee, no simulation to diverge
+from production. `vpaVerifiedAt` is set by exactly that.
+
+Seeded fixtures are marked `test` and excluded from revenue totals.
+
+---
+
+## 10. ADOPTED AND REJECTED FROM THE RAZORPAY-PARITY SPEC
+
+The v1.0 spec (`docs/razorpay-parity-reference.md`) described a licensed gateway. Four things in it
+survive contact with this product:
+
+| Adopted | Where |
+|---|---|
+| Money and tenancy rules — merchant_id everywhere, integer minor units, Idempotency-Key | §5 |
+| Webhook delivery contract — HMAC, 5s, 24h backoff, auto-disable | §5, P5 |
+| API key handling — show the secret once, never store it | P5 |
+| UI component set — DataTable with skeleton/empty/error, SideDrawer, CommandPalette, StatusPill, CopyId, Toast, EmptyState | P3 |
+
+Everything else is rejected, and for one reason: **it requires holding money.**
+
+Settlements, refunds, disputes, Route transfers and reversals, Optimizer routing, Banking X payouts,
+payroll, escrow, capital, partner sub-merchant onboarding, credits and reserve balances, checkout
+styling, card BIN filters, EMI offers, video KYC, penny-drop verification — every one of these
+presumes funds pass through us. They do not. Building any of them would either be theatre or would
+require the RBI licence this project exists to avoid.
+
+The design system is also rejected: dark glass was for a developer-tools brand. This product is
+paper-and-ink, aimed at a baker.
+
+---
+
+## 11. OUT OF SCOPE — PERMANENTLY
 
 Holding or routing funds · settlements · refunds through us · disputes · card or netbanking
 acceptance · PA/PG licensing · PCI scope · bank SMS or mailbox scraping · payouts · payroll ·
