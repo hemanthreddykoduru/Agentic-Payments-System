@@ -28,7 +28,7 @@ export default async function PayPage({ params }: PageProps<"/pay/[orderId]"> ) 
       <p className="mt-1 text-[15px] text-muted">{order.description}</p>
 
       {order.status === "paid" ? (
-        <div className="mt-8 rounded border border-ok/40 bg-[#EAF5EE] p-6 text-center">
+        <div className="mt-8 rounded border border-ok/40 bg-[#E8F2EA] p-6 text-center">
           <p className="tight text-[20px] text-ok">Payment confirmed</p>
           <p className="mt-2 text-[13.5px] text-muted">
             {order.merchant.name} has confirmed this payment arrived. Nothing more to do.
@@ -59,7 +59,7 @@ export default async function PayPage({ params }: PageProps<"/pay/[orderId]"> ) 
             </p>
             <a
               href={order.upiIntent}
-              className="mt-4 block rounded bg-ink px-4 py-3 text-center text-[15px] text-paper transition-colors hover:bg-accent sm:hidden"
+              className="mt-4 block rounded bg-ink px-4 py-3 text-center text-[15px] text-paper transition-colors hover:bg-black sm:hidden"
             >
               Open a UPI app
             </a>

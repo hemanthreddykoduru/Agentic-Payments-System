@@ -1,7 +1,7 @@
 import { formatPaise } from "@/lib/enums";
 
 const PILL: Record<string, string> = {
-  paid: "bg-[#EAF5EE] text-ok border-ok/40",
+  paid: "bg-[#E8F2EA] text-ok border-ok/40",
   awaiting_confirmation: "bg-accent-soft text-accent-deep border-accent/40",
   created: "bg-line/50 text-muted border-line",
   rejected: "bg-no-soft text-no border-no/40",

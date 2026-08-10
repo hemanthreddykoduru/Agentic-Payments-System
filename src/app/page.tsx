@@ -188,11 +188,11 @@ export default async function Home() {
         <div className="sheet flex items-center gap-6 py-3.5">
           <Link href="/" className="tight flex items-center gap-2.5 text-[15px]">
             <svg viewBox="0 0 32 32" aria-hidden className="size-7">
-              <rect width="32" height="32" rx="7" fill="#171412" />
-              <g stroke="#FBF9F6" strokeWidth="1.6" strokeLinecap="round">
+              <rect width="32" height="32" rx="7" fill="#171918" />
+              <g stroke="#F5FAF2" strokeWidth="1.6" strokeLinecap="round">
                 <path d="M9 11h14M9 16h14M9 21h9" />
               </g>
-              <path d="M8 16h16" stroke="#F26522" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M8 16h16" stroke="#52B365" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
             Agentic Payment
           </Link>
@@ -210,7 +210,7 @@ export default async function Home() {
           </ul>
           <a
             href="#run"
-            className="ui ml-auto shrink-0 rounded bg-ink px-3.5 py-2 text-[11px] text-paper transition-colors hover:bg-accent md:ml-0"
+            className="ui ml-auto shrink-0 rounded bg-ink px-3.5 py-2 text-[11px] text-paper transition-colors hover:bg-black md:ml-0"
           >
             Run it locally
           </a>
@@ -303,7 +303,7 @@ export default async function Home() {
           <svg viewBox="0 0 1000 150" aria-label="How a payment becomes ledger rows" className="min-w-[720px]">
             <defs>
               <marker id="mA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-                <path d="M0,0L8,4L0,8" fill="none" stroke="#6D665E" strokeWidth="1.2" />
+                <path d="M0,0L8,4L0,8" fill="none" stroke="#808080" strokeWidth="1.2" />
               </marker>
             </defs>
             {[
@@ -313,20 +313,20 @@ export default async function Home() {
               ["Receipt", "proof for the customer", 705],
             ].map(([title, sub, x]) => (
               <g key={title as string}>
-                <rect x={x as number} y="46" width="200" height="58" rx="3" fill="#fff" stroke="#E5DFD7" />
-                <text x={(x as number) + 16} y="70" fontSize="12" fill="#171412" className="ui">{title}</text>
-                <text x={(x as number) + 16} y="88" fontSize="10.5" fill="#6D665E" className="ui">{sub}</text>
+                <rect x={x as number} y="46" width="200" height="58" rx="3" fill="#fff" stroke="#DDE5DA" />
+                <text x={(x as number) + 16} y="70" fontSize="12" fill="#171918" className="ui">{title}</text>
+                <text x={(x as number) + 16} y="88" fontSize="10.5" fill="#808080" className="ui">{sub}</text>
               </g>
             ))}
-            <g stroke="#6D665E" strokeWidth="1.3" fill="none">
+            <g stroke="#808080" strokeWidth="1.3" fill="none">
               <line className="flowline" x1="200" y1="75" x2="229" y2="75" markerEnd="url(#mA)" />
               <line className="flowline" x1="435" y1="75" x2="464" y2="75" markerEnd="url(#mA)" />
               <line className="flowline" x1="670" y1="75" x2="699" y2="75" markerEnd="url(#mA)" />
             </g>
-            <circle r="3.4" fill="#F26522">
+            <circle r="3.4" fill="#52B365">
               <animateMotion dur="5s" repeatCount="indefinite" path="M0,75 L905,75" />
             </circle>
-            <text x="250" y="130" fontSize="10.5" fill="#6D665E" className="ui">
+            <text x="250" y="130" fontSize="10.5" fill="#808080" className="ui">
               four tables, four different questions — collapsing them is what makes the books unanswerable
             </text>
           </svg>
@@ -440,7 +440,7 @@ export default async function Home() {
       </Clause>
 
       {/* ── The finding: real query, real rows ──────────────────────────── */}
-      <section className="border-b border-dark-line bg-dark py-[88px] text-[#EDE8E2]">
+      <section className="border-b border-dark-line bg-dark py-[88px] text-paper">
         <div className="sheet">
           <p className="eyebrow text-accent">The finding</p>
           <h2 className="mt-3 max-w-[700px] text-[26px] text-white sm:text-[33px]">
@@ -567,11 +567,11 @@ ORDER  BY times DESC;`}
             <div>
               <div className="tight mb-3 flex items-center gap-2.5 text-[16px] text-white">
                 <svg viewBox="0 0 32 32" aria-hidden className="size-7">
-                  <rect width="32" height="32" rx="7" fill="#211D19" />
-                  <g stroke="#EDE8E2" strokeWidth="1.6" strokeLinecap="round">
+                  <rect width="32" height="32" rx="7" fill="#171918" />
+                  <g stroke="#F5FAF2" strokeWidth="1.6" strokeLinecap="round">
                     <path d="M9 11h14M9 16h14M9 21h9" />
                   </g>
-                  <path d="M8 16h16" stroke="#F26522" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M8 16h16" stroke="#52B365" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
                 Agentic Payment
               </div>

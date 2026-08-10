@@ -43,7 +43,7 @@ export default function NewOrderPage() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-ink px-4 py-3 text-[15px] text-paper transition-colors hover:bg-accent disabled:opacity-50"
+          className="w-full rounded bg-ink px-4 py-3 text-[15px] text-paper transition-colors hover:bg-black disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create payment link"}
         </button>

@@ -29,7 +29,7 @@ export function SidebarLink({ item, queueCount }: { item: NavItem; queueCount: n
     >
       {item.label}
       {item.href === "/app" && queueCount > 0 && (
-        <span className="ui ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-white">
+        <span className="ui ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-medium text-black">
           {queueCount}
         </span>
       )}

@@ -41,7 +41,7 @@ export function ScrollRule() {
       <button
         onClick={() => scrollTo({ top: 0, behavior: "smooth" })}
         aria-label="Back to top"
-        className={`fixed bottom-6 right-6 z-50 grid size-11 place-items-center rounded-full bg-ink text-paper transition-all hover:bg-accent cursor-pointer ${
+        className={`fixed bottom-6 right-6 z-50 grid size-11 place-items-center rounded-full bg-ink text-paper transition-all hover:bg-black cursor-pointer ${
           scrolled ? "opacity-100" : "pointer-events-none translate-y-2 opacity-0"
         }`}
       >
@@ -143,7 +143,7 @@ const DOCS: Record<string, Doc> = {
 };
 
 const CHIP = {
-  ok: "bg-[#EAF5EE] text-ok border-ok",
+  ok: "bg-[#E8F2EA] text-ok border-ok",
   no: "bg-no-soft text-no border-no",
   neutral: "bg-accent-soft text-accent-deep border-accent",
 } as const;
@@ -283,7 +283,7 @@ export function LedgerCheck() {
         <button
           onClick={run}
           disabled={state.status === "running"}
-          className="ui cursor-pointer rounded bg-ink px-4 py-2 text-[11px] text-paper transition-colors hover:bg-accent disabled:opacity-50"
+          className="ui cursor-pointer rounded bg-ink px-4 py-2 text-[11px] text-paper transition-colors hover:bg-black disabled:opacity-50"
         >
           {state.status === "running" ? "Summing…" : state.status === "done" ? "Run it again" : "Sum the ledger"}
         </button>

@@ -23,11 +23,11 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <div className="flex items-center gap-4 px-5 py-3">
           <Link href="/app" className="tight flex items-center gap-2.5 text-[15px]">
             <svg viewBox="0 0 32 32" aria-hidden className="size-7">
-              <rect width="32" height="32" rx="7" fill="#171412" />
-              <g stroke="#FBF9F6" strokeWidth="1.6" strokeLinecap="round">
+              <rect width="32" height="32" rx="7" fill="#171918" />
+              <g stroke="#F5FAF2" strokeWidth="1.6" strokeLinecap="round">
                 <path d="M9 11h14M9 16h14M9 21h9" />
               </g>
-              <path d="M8 16h16" stroke="#F26522" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M8 16h16" stroke="#52B365" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
             Agentic Payment
           </Link>
@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           <div className="ml-auto flex items-center gap-4">
             <Link
               href="/app/orders/new"
-              className="ui rounded bg-ink px-3.5 py-2 text-[11px] text-paper transition-colors hover:bg-accent"
+              className="ui rounded bg-ink px-3.5 py-2 text-[11px] text-paper transition-colors hover:bg-black"
             >
               New order
             </Link>

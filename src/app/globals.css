@@ -10,25 +10,41 @@
    Every structural device means something about bookkeeping.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Palette, sampled: #030303 #171918 #4D8C58 #52B365 #74AB7D #808080 #9C9C99 #F5FAF2
+ *
+ * Sampled off a marketing site, so its greens and greys were chosen for large
+ * display type. At 11–14px they fail WCAG AA on this background:
+ *   #808080 on paper       3.73:1
+ *   #4D8C58 on paper       3.81:1
+ *   #4D8C58 on accent-soft 3.52:1
+ * So the brand greens stay for fills, borders and large type, and two darker
+ * shades from the same family carry small text. #52B365 is never a background
+ * for light text — white on it is 2.48:1.
+ *
+ * Derived (no palette equivalent): --color-line, --color-accent-soft (tints),
+ * and --color-no. A rejected payment must not read as green or grey.
+ */
 @theme {
-  --color-paper: #fbf9f6;
+  --color-paper: #f5faf2;
   --color-card: #ffffff;
-  --color-ink: #171412;
-  --color-muted: #6d665e;
-  --color-line: #e5dfd7;
+  --color-ink: #171918;
+  --color-black: #030303;
+  --color-muted: #6e6e6e;      /* 4.82:1 — sampled #808080 was 3.73:1 */
+  --color-line: #dde5da;
 
-  --color-accent: #f26522;
-  --color-accent-deep: #c64f0e;
-  --color-accent-soft: #fdeee5;
+  --color-accent: #52b365;     /* fills, borders, large type only */
+  --color-accent-mid: #74ab7d;
+  --color-accent-deep: #437a4d; /* 4.80:1 on paper, 4.44:1 on accent-soft */
+  --color-accent-soft: #e8f2ea;
 
-  --color-ok: #3e9b62;
-  --color-no: #c64530;
+  --color-ok: #437a4d;
+  --color-no: #b03a26;         /* 5.18:1 on no-soft */
   --color-no-soft: #fbeae6;
 
-  --color-dark: #171412;
-  --color-dark-2: #211d19;
-  --color-dark-line: #332d27;
-  --color-dark-mut: #a69c91;
+  --color-dark: #030303;
+  --color-dark-2: #171918;
+  --color-dark-line: #2a2c2a;
+  --color-dark-mut: #9c9c99;
 
   --font-sans: var(--font-inter);
   --font-tight: var(--font-inter-tight);
