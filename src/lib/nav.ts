@@ -4,31 +4,28 @@
  * `href` means it exists. `soon` renders as a dimmed label, never a dead button.
  * When a phase ships, move the item from `soon` to `href`. That is the only edit.
  */
-export type NavItem = { label: string; href?: string; soon?: true; badge?: "queue" };
+export type NavItem = { label: string; href?: string; soon?: true };
 
 export const NAV: { group?: string; items: NavItem[] }[] = [
   {
     items: [
       { label: "Home", href: "/app" },
       { label: "Transactions", href: "/app/orders" },
-      { label: "Books", soon: true },
-      { label: "Reports", soon: true },
+      { label: "Books", href: "/app/books" },
     ],
   },
   {
     group: "Payment products",
     items: [
-      { label: "Payment links", soon: true },
-      { label: "Payment pages", soon: true },
+      { label: "Payment links", href: "/app/links" },
+      { label: "QR codes", href: "/app/qr" },
       { label: "Invoices", soon: true },
-      { label: "QR codes", soon: true },
       { label: "Subscriptions", soon: true },
-      { label: "Payment button", soon: true },
     ],
   },
   {
     group: "Customers",
-    items: [{ label: "Customers", soon: true }],
+    items: [{ label: "Customers", href: "/app/customers" }],
   },
   {
     group: "Developers",
@@ -36,14 +33,13 @@ export const NAV: { group?: string; items: NavItem[] }[] = [
       { label: "API keys", soon: true },
       { label: "Webhooks", soon: true },
       { label: "MCP server", soon: true },
-      { label: "Docs", soon: true },
     ],
   },
   {
     group: "Account",
     items: [
-      { label: "Settings", soon: true },
-      { label: "Team", soon: true },
+      { label: "Settings", href: "/app/settings" },
+      { label: "Team", href: "/app/team" },
     ],
   },
 ];
