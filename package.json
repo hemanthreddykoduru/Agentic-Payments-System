@@ -11,7 +11,8 @@
     "seed:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "db:unlock": "node scripts/crdb-unlock.mjs"
+    "db:unlock": "node scripts/crdb-unlock.mjs",
+    "e2e": "tsx scripts/e2e.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
